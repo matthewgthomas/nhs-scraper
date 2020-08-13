@@ -50,7 +50,8 @@ trusts_list = na.omit(trusts_list)                   # remove NAs (these are the
 ## Scrape hospital addresses and URLs for each Trust, as well as Trust reviews
 ##
 # loop over each Trust, extracting hospital data
-all_hospitals = data_frame()
+all_hospitals = tibble()
+all_trusts = tibble()
 i = 1
 
 for (trust in trusts_list) {
@@ -64,6 +65,14 @@ for (trust in trusts_list) {
   
   trust_name = extract_text(".//h1[@id = 'org-title']")
   
+  trust_address1 = extract_text(".//span[@property = 'streetAddress']")
+  trust_address2 = extract_text(".//span[@property = 'addressLocality']")
+  trust_address3 = extract_text(".//span[@property = 'addressRegion']")
+  trust_pc = extract_text(".//span[@property = 'postalCode']")
+  trust_web = extract_text(".//a[@property = 'url']")
+  
+  trusts = tibble(Name = trust_name, Address1 = trust_address1, Address2 = trust_address2, Address3 = trust_address3, Postcode = trust_pc, URL = trust_web)
+  
   ##
   ## get hospital details from this Trust
   ##
@@ -73,7 +82,7 @@ for (trust in trusts_list) {
   
   hosp_address = hosp_address[1:length(hosp_names)]
   
-  hospitals = data_frame(Name = hosp_names, URL = hosp_urls, Address = hosp_address, Trust = trust_name)
+  hospitals = tibble(Name = hosp_names, URL = hosp_urls, Address = hosp_address, Trust = trust_name)
   
   # tidy up addresses:
   hospitals = hospitals %>% 
@@ -91,6 +100,7 @@ for (trust in trusts_list) {
     mutate(Postcode = str_extract(Address, postcode_regex))
   
   # save to main dataframe
+  all_trusts = bind_rows(all_trusts, trusts)
   all_hospitals = bind_rows(all_hospitals, hospitals)
   
   print(paste0("Finished ", i, " of ", length(trusts_list)))
@@ -102,6 +112,7 @@ for (trust in trusts_list) {
 
 # save
 write_csv(all_hospitals, "England hospitals.csv")
+write_csv(all_trusts, "England Trusts.csv")
 
 # geocode the hospitals - ignore this step for now
 # source("process hospitals.r")

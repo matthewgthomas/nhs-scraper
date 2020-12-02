@@ -10,7 +10,9 @@ library(stringr)
 ##
 ## URLs
 ##
-url_trusts_list = "https://www.nhs.uk/servicedirectories/pages/nhstrustlisting.aspx"
+# url_trusts_list = "https://www.nhs.uk/servicedirectories/pages/nhstrustlisting.aspx"
+url_trusts_list_acute = "https://www.nhs.uk/Services/Pages/AcuteTrustList.aspx?trustType=Acute"
+url_trusts_list_other = "https://www.nhs.uk/Services/Pages/AcuteTrustList.aspx?trustType=HealthAndCare"
 
 url_trusts = "https://www.nhs.uk/Services/Trusts/HospitalsAndClinics/DefaultView.aspx"
 
@@ -30,20 +32,30 @@ extract_text = function(x) extract_html(x) %>%
 ################################################################################################
 ## Download list of Trust IDs
 ##
-# get webpage data
-req = httr::GET(url_trusts_list, ua)
+scrape_trusts_list <- function(url) {
+  # get webpage data
+  req = httr::GET(url, ua)
+  
+  # load html
+  out = content(req, "text")
+  doc = read_html(out)
+  
+  # get list of links to Trusts' webpages
+  trusts_list = doc %>%
+    html_nodes(xpath="//*[contains(@class, 'o-listing')]//a/@href") %>%  # get href of any <a> tags within anything that has the class "trust-list"
+    html_text()
+  
+  trusts_list = str_extract(trusts_list, "id=[0-9]+")  # extract the IDs for each Trust
+  trusts_list = na.omit(trusts_list)                   # remove NAs (these are the 'return to top' links)
+  trusts_list
+}
 
-# load html
-out = content(req, "text")
-doc = read_html(out)
+trusts_list_acute <- scrape_trusts_list(url_trusts_list_acute)
+trusts_list_other <- scrape_trusts_list(url_trusts_list_other)
 
-# get list of links to Trusts' webpages
-trusts_list = doc %>%
-  html_nodes(xpath="//*[(@class = 'trust-list')]//a/@href") %>%  # get href of any <a> tags within anything that has the class "trust-list"
-  html_text()
+trusts_list <- c(trusts_list_acute, trusts_list_other)
 
-trusts_list = str_extract(trusts_list, "id=[0-9]+")  # extract the IDs for each Trust
-trusts_list = na.omit(trusts_list)                   # remove NAs (these are the 'return to top' links)
+rm(trusts_list_acute, trusts_list_other)
 
 
 ################################################################################################
